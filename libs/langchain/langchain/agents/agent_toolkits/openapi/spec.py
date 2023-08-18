@@ -70,7 +70,7 @@ class ReducedOpenAPISpec:
     endpoints: List[Tuple[str, str, dict]]
 
 
-def reduce_openapi_spec(spec: dict, dereference: bool = True) -> ReducedOpenAPISpec:
+def reduce_openapi_spec(specs: List[dict], dereference: bool = True) -> ReducedOpenAPISpec:
     """Simplify/distill/minify a spec somehow.
 
     I want a smaller target for retrieval and (more importantly)
@@ -79,20 +79,21 @@ def reduce_openapi_spec(spec: dict, dereference: bool = True) -> ReducedOpenAPIS
     to this end, but doesn't seem so.
     """
     # 1. Consider only get, post, patch, delete endpoints.
-    endpoints = [
-        (f"{operation_name.upper()} {route}", docs.get("description"), docs)
-        for route, operation in spec["paths"].items()
-        for operation_name, docs in operation.items()
-        if operation_name in ["get", "post", "patch", "delete"]
-    ]
+    for spec in specs:
+        endpoints = [
+            (f"{operation_name.upper()} {route}", docs.get("description"), docs)
+            for route, operation in spec["paths"].items()
+            for operation_name, docs in operation.items()
+            if operation_name in ["get", "post", "patch", "delete"]
+        ]
 
     # 2. Replace any refs so that complete docs are retrieved.
     # Note: probably want to do this post-retrieval, it blows up the size of the spec.
-    if dereference:
-        endpoints = [
-            (name, description, dereference_refs(docs, spec))
-            for name, description, docs in endpoints
-        ]
+        if dereference:
+            endpoints = [
+                (name, description, dereference_refs(docs, spec))
+                for name, description, docs in endpoints
+            ]
 
     # 3. Strip docs down to required request args + happy path response.
     def reduce_endpoint_docs(docs: dict) -> dict:
